@@ -21,6 +21,14 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
+# ── Page config MUST be the very first Streamlit command ─────────────────
+st.set_page_config(
+    page_title="AI Gym Coach",
+    page_icon="🏋️",
+    layout="wide",
+    initial_sidebar_state="expanded",
+)
+
 # ── DB + path initialisation (runs once on startup) ─────────────────────
 from app.startup import run_startup
 run_startup()
@@ -32,14 +40,6 @@ init_session_defaults()
 # ── CSS ──────────────────────────────────────────────────────────────────
 from app.ui.style import inject_css, section_header
 inject_css()
-
-# ── Page config ──────────────────────────────────────────────────────────
-st.set_page_config(
-    page_title="AI Gym Coach",
-    page_icon="🏋️",
-    layout="wide",
-    initial_sidebar_state="expanded",
-)
 
 # ── If already logged in → redirect hint ────────────────────────────────
 if st.session_state.get("logged_in"):

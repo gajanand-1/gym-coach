@@ -1,228 +1,182 @@
 """
-AI Personal Gym Coach — CLI Entrypoint
-=======================================
+Personal AI Gym Coach — Main Entry Point
+=========================================
 Run with:
-    python main.py
+    streamlit run main.py
 
-Or for a single command:
-    python main.py --message "I ate 4 roti and 1 bowl dal"
-
-Or to run the demo walkthrough:
-    python main.py --demo
+This file serves as the home/login page.
+All other pages live in app/ui/pages/ and are auto-discovered by Streamlit.
 """
 
-from __future__ import annotations
-
+import os
 import sys
-import argparse
-from pathlib import Path
 
-# Make sure project root is on the path regardless of working directory
-sys.path.insert(0, str(Path(__file__).parent))
+# ── Ensure project root is on sys.path so all imports resolve correctly ──
+PROJECT_ROOT = os.path.dirname(os.path.abspath(__file__))
+if PROJECT_ROOT not in sys.path:
+    sys.path.insert(0, PROJECT_ROOT)
 
-from rich.console import Console
-from rich.panel   import Panel
-from rich.prompt  import Prompt
-from rich         import box
+import streamlit as st
+from dotenv import load_dotenv
 
-from graphs import gym_coach_graph
+load_dotenv()
 
-console = Console()
+# ── DB + path initialisation (runs once on startup) ─────────────────────
+from app.startup import run_startup
+run_startup()
 
-BANNER = """
-[bold cyan]
-  ╔══════════════════════════════════════════╗
-  ║   🏋️   AI PERSONAL GYM COACH  🏋️        ║
-  ║        Powered by LangGraph              ║
-  ╚══════════════════════════════════════════╝
-[/bold cyan]
-[dim]Type [bold]help[/bold] to see all commands.  Type [bold]quit[/bold] to exit.[/dim]
-"""
+# ── Session state bootstrap ──────────────────────────────────────────────
+from app.utils.session import init_session_defaults
+init_session_defaults()
 
-HELP_TEXT = """
-[bold yellow]What can I do?[/bold yellow]
+# ── CSS ──────────────────────────────────────────────────────────────────
+from app.ui.style import inject_css, section_header
+inject_css()
 
-  [cyan]Profile & Targets[/cyan]
-    "Set up my profile: I'm 22, male, 82kg, 175cm, fat loss goal, moderate activity,
-     vegetarian, budget ₹4000"
-    "Calculate my macros"
+# ── Page config ──────────────────────────────────────────────────────────
+st.set_page_config(
+    page_title="AI Gym Coach",
+    page_icon="🏋️",
+    layout="wide",
+    initial_sidebar_state="expanded",
+)
 
-  [cyan]Diet[/cyan]
-    "Generate my weekly diet plan"
-    "I ate 4 roti, 1 bowl dal, 200g paneer for lunch"
-    "Show my grocery list"
+# ── If already logged in → redirect hint ────────────────────────────────
+if st.session_state.get("logged_in"):
+    user_name = st.session_state.get("username", "Athlete")
+    st.success(f"✅ Logged in as **{user_name}** — use the sidebar to navigate.")
+    st.markdown("### 👈 Select a page from the sidebar to get started")
+    st.markdown("""
+    | Page | What you can do |
+    |---|---|
+    | 🏠 Dashboard | Full daily snapshot — calories, macros, water, sleep, workout |
+    | 👤 Profile | Update your details and recalculate macros |
+    | 🍽️ Food Log | Log food naturally with AI parsing |
+    | 🔥 Calorie Tracker | Live consumed vs remaining vs target |
+    | 🥗 Diet Planner | Generate AI 7-day meal plan |
+    | 💪 Workout Planner | Generate AI weekly training programme |
+    | 📋 Workout Log | Log completed sessions |
+    | 📈 Progressive Overload | AI analysis of strength progression |
+    | ⚖️ Weight Tracker | Log and chart body weight |
+    | 🛒 Grocery Planner | Auto grocery list from meal plan |
+    | 📊 Weekly Check-In | AI weekly review and macro adjustment |
+    | 💧 Water Tracker | Track daily hydration |
+    | 😴 Sleep Tracker | Log and analyse sleep |
+    | 💊 Supplement Tracker | Daily supplement adherence |
+    | 🤖 AI Coach Chat | Conversational AI coach with full context |
+    | 🏫 Mess Menu | Upload hostel mess menu |
+    """)
+    if st.button("🚪 Logout", type="secondary"):
+        from app.services.auth_service import AuthService
+        AuthService.clear_session()
+        st.rerun()
+    st.stop()
 
-  [cyan]Workouts[/cyan]
-    "Create my workout plan"
-    "Log workout: Bench Press 60kg 10 10 8 7, Shoulder Press 40kg 12 12 10"
+# ══════════════════════════════════════════════════════════════════════════
+# LOGIN / REGISTER  (shown only when NOT logged in)
+# ══════════════════════════════════════════════════════════════════════════
 
-  [cyan]Tracking[/cyan]
-    "Weight today: 81.5 kg"
-    "Weekly check-in: weight 81.5, energy high, hunger medium, sleep 7 hours"
+# ── Hero ─────────────────────────────────────────────────────────────────
+st.markdown("""
+<div style="text-align:center;padding:40px 0 20px">
+    <div style="font-size:4rem">🏋️</div>
+    <h1 style="color:#FAFAFA;font-size:2.5rem;font-weight:800;margin:8px 0">
+        Personal AI Gym Coach
+    </h1>
+    <p style="color:#8892A4;font-size:1.1rem;max-width:600px;margin:0 auto">
+        Your AI-powered personal trainer, nutritionist & progress coach.<br>
+        Tracks food, workouts, weight, sleep, supplements — and adapts to <em>you</em>.
+    </p>
+</div>
+""", unsafe_allow_html=True)
 
-  [cyan]Meta[/cyan]
-    help    → show this menu
-    quit    → exit
-"""
-
-
-def run_graph(user_input: str) -> str:
-    """Invoke the gym coach graph with a single user message."""
-    result = gym_coach_graph.invoke({"user_input": user_input})
-    return result.get("agent_response", "⚠️  No response generated.")
-
-
-def interactive_loop() -> None:
-    """REPL loop for interactive use."""
-    console.print(BANNER)
-    while True:
-        try:
-            user_input = Prompt.ask("\n[bold green]You[/bold green]").strip()
-        except (KeyboardInterrupt, EOFError):
-            console.print("\n[dim]Goodbye! Keep pushing 💪[/dim]")
-            break
-
-        if not user_input:
-            continue
-
-        if user_input.lower() in ("quit", "exit", "q"):
-            console.print("[dim]Goodbye! Keep pushing 💪[/dim]")
-            break
-
-        if user_input.lower() in ("help", "h", "?"):
-            console.print(HELP_TEXT)
-            continue
-
-        console.print()
-        with console.status("[bold cyan]Thinking...[/bold cyan]", spinner="dots"):
-            response = run_graph(user_input)
-
-        console.print(
-            Panel(
-                response,
-                title="[bold cyan]🤖  Coach[/bold cyan]",
-                border_style="cyan",
-                box=box.ROUNDED,
-            )
-        )
-
-
-# ── Demo walkthrough ──────────────────────────────────────────────────────────
-DEMO_MESSAGES = [
-    (
-        "Profile Setup",
-        "My name is Arjun. I'm 22 years old, male, 82kg, 175cm tall. "
-        "My goal is fat loss. Activity level is moderate. I'm vegetarian. "
-        "Monthly budget ₹4000. Gym experience: beginner. Target weight 75kg. Sleep 7 hours.",
-    ),
-    (
-        "Macro Calculation",
-        "Calculate my daily calorie and macro targets",
-    ),
-    (
-        "Diet Plan",
-        "Generate my weekly vegetarian diet plan",
-    ),
-    (
-        "Food Log",
-        "For lunch I ate 4 roti, 1 bowl dal, and 200g paneer",
-    ),
-    (
-        "Workout Plan",
-        "Create a beginner gym workout plan for fat loss",
-    ),
-    (
-        "Workout Log",
-        "Logged today's workout: Bench Press 50kg sets 10 10 8, "
-        "Shoulder Press 30kg sets 12 12 10, Tricep Pushdown 25kg sets 15 15 12",
-    ),
-    (
-        "Weight Tracking",
-        "Weight today: 81.8 kg",
-    ),
-    (
-        "Grocery List",
-        "Show me my weekly grocery shopping list",
-    ),
-    (
-        "Weekly Check-In",
-        "Weekly check-in: weight 81.5 kg, energy level medium, hunger low, slept 7 hours. "
-        "Feeling good but a bit tired mid-week.",
-    ),
+# ── Feature badges ────────────────────────────────────────────────────────
+feat_cols = st.columns(4)
+features = [
+    ("🤖", "AI Food Parsing", "Log food in plain English"),
+    ("💪", "Smart Workout Plans", "PPL / Upper-Lower / Full Body"),
+    ("📈", "Progressive Overload", "Auto weight progression"),
+    ("🥗", "7-Day Diet Plans", "Non-veg, high-protein meals"),
 ]
-
-
-def run_demo() -> None:
-    """Run a guided demo walkthrough hitting every feature."""
-    console.print(BANNER)
-    console.print(
-        Panel(
-            "[bold yellow]🎬  DEMO MODE[/bold yellow] — Running all 9 features in sequence.\n"
-            "This will make real LLM calls. Make sure OPENAI_API_KEY is set.",
-            border_style="yellow",
-        )
+for col, (icon, title, desc) in zip(feat_cols, features):
+    col.markdown(
+        f'<div style="background:#1E2130;border-radius:10px;padding:16px;text-align:center;'
+        f'border:1px solid #2A2F45;height:120px">'
+        f'<div style="font-size:1.8rem">{icon}</div>'
+        f'<div style="color:#FAFAFA;font-weight:600;font-size:0.95rem">{title}</div>'
+        f'<div style="color:#8892A4;font-size:0.8rem">{desc}</div>'
+        f'</div>',
+        unsafe_allow_html=True,
     )
 
-    for i, (title, message) in enumerate(DEMO_MESSAGES, 1):
-        console.print(f"\n[bold magenta]── Step {i}: {title} ──────────────────────────[/bold magenta]")
-        console.print(f"[green]You:[/green] {message}\n")
+st.markdown("<br>", unsafe_allow_html=True)
 
-        with console.status("[bold cyan]Thinking...[/bold cyan]", spinner="dots"):
-            response = run_graph(message)
-
-        console.print(
-            Panel(
-                response,
-                title=f"[bold cyan]🤖  Coach — {title}[/bold cyan]",
-                border_style="cyan",
-                box=box.ROUNDED,
-            )
-        )
-        console.input("\n[dim]Press Enter for next step...[/dim]")
-
-    console.print("\n[bold green]✅  Demo complete! All features demonstrated.[/bold green]")
-
-
-# ── Argparse entry ─────────────────────────────────────────────────────────────
-def main() -> None:
-    parser = argparse.ArgumentParser(
-        description="AI Personal Gym Coach powered by LangGraph",
-        formatter_class=argparse.RawDescriptionHelpFormatter,
-        epilog="""
-Examples:
-  python main.py
-  python main.py --demo
-  python main.py --message "Calculate my macros"
-        """,
+# ── API key warning ───────────────────────────────────────────────────────
+if not os.getenv("ANTHROPIC_API_KEY"):
+    st.warning(
+        "⚠️ **ANTHROPIC_API_KEY not set** — AI features won't work until you add it to `.env`",
+        icon="🔑",
     )
-    parser.add_argument(
-        "--message", "-m",
-        type=str,
-        default=None,
-        help="Send a single message and print the response (non-interactive)",
-    )
-    parser.add_argument(
-        "--demo",
-        action="store_true",
-        help="Run the guided feature demo walkthrough",
-    )
-    args = parser.parse_args()
 
-    if args.demo:
-        run_demo()
-    elif args.message:
-        response = run_graph(args.message)
-        console.print(
-            Panel(
-                response,
-                title="[bold cyan]🤖  Coach[/bold cyan]",
-                border_style="cyan",
-                box=box.ROUNDED,
-            )
-        )
-    else:
-        interactive_loop()
+# ── Auth tabs ─────────────────────────────────────────────────────────────
+_, center_col, _ = st.columns([1, 2, 1])
+with center_col:
+    tab_login, tab_register = st.tabs(["🔐 Login", "📝 Register"])
 
+    # ── LOGIN ──
+    with tab_login:
+        with st.form("login_form"):
+            username = st.text_input("Username", placeholder="your_username")
+            password = st.text_input("Password", type="password", placeholder="••••••••")
+            login_btn = st.form_submit_button("Login", use_container_width=True, type="primary")
 
-if __name__ == "__main__":
-    main()
+        if login_btn:
+            if not username or not password:
+                st.error("Please enter both username and password.")
+            else:
+                from app.models.database import SessionLocal
+                from app.services.auth_service import AuthService
+                db = SessionLocal()
+                auth = AuthService(db)
+                success, msg, user = auth.login(username, password)
+                db.close()
+
+                if success and user:
+                    AuthService.set_session_user(user)
+                    st.success(msg)
+                    st.rerun()
+                else:
+                    st.error(msg)
+
+    # ── REGISTER ──
+    with tab_register:
+        with st.form("register_form"):
+            reg_name     = st.text_input("Full Name",  placeholder="John Doe")
+            reg_username = st.text_input("Username",   placeholder="johndoe")
+            reg_email    = st.text_input("Email",      placeholder="john@example.com")
+            reg_pw       = st.text_input("Password",   type="password", placeholder="Min 6 characters")
+            reg_pw2      = st.text_input("Confirm Password", type="password")
+            register_btn = st.form_submit_button("Create Account", use_container_width=True, type="primary")
+
+        if register_btn:
+            if not all([reg_name, reg_username, reg_email, reg_pw]):
+                st.error("All fields are required.")
+            elif reg_pw != reg_pw2:
+                st.error("Passwords do not match.")
+            else:
+                from app.models.database import SessionLocal
+                from app.services.auth_service import AuthService
+                db = SessionLocal()
+                auth = AuthService(db)
+                success, msg = auth.register(reg_username, reg_email, reg_pw, reg_name)
+                if success:
+                    # Auto-login after registration
+                    _, _, user = auth.login(reg_username, reg_pw)
+                    db.close()
+                    if user:
+                        AuthService.set_session_user(user)
+                        st.success(f"🎉 {msg} Setting up your profile…")
+                        st.rerun()
+                else:
+                    db.close()
+                    st.error(msg)

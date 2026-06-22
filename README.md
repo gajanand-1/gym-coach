@@ -1,178 +1,276 @@
-# 🏋️ AI Personal Gym Coach — LangGraph MVP
+# 🏋️ Personal AI Gym Coach
 
-A fully local, conversational AI gym coach built with **LangGraph**.  
-Talk to it like a real coach. It plans your diet, tracks your food, designs your workouts, monitors your weight, and adjusts your plan week-by-week.
+A production-ready AI-powered fitness application that acts as your personal trainer, nutritionist, and progress coach — all in one.
+
+Built with **Python · Streamlit · LangGraph · Claude (Anthropic) · SQLite**.
 
 ---
 
-## Features (MVP v1)
+## ✨ Features
 
-| # | Feature | What it does |
+| # | Feature | Description |
 |---|---------|-------------|
-| 1 | **User Profile** | Stores age, weight, goal, budget, diet type, allergies |
-| 2 | **Calorie & Macro Calculator** | Mifflin-St Jeor TDEE + protein/carbs/fat split |
-| 3 | **Weekly Diet Planner** | LLM-generated 7-day Indian meal plan within budget |
-| 4 | **Food Logging** | Natural-language food input → calories + macros + daily totals |
-| 5 | **Workout Planner** | PPL / Upper-Lower / Full Body split based on experience |
-| 6 | **Workout Logging** | Log sets/reps/weight in plain English |
-| 7 | **Progressive Overload** | Auto-recommends weight increases based on last week |
-| 8 | **Weight Tracking** | Daily weigh-in, trend chart, goal-date prediction |
-| 9 | **Grocery Planner** | Weekly shopping list derived from diet plan with ₹ estimates |
-| 10 | **Weekly Check-In** | Sunday review → auto-adjusts calories, cardio, volume |
+| 1 | **Dashboard** | Real-time snapshot: calories, macros, water, sleep, workout status |
+| 2 | **User Profile** | BMR / TDEE / macro targets auto-calculated (Mifflin-St Jeor) |
+| 3 | **AI Food Log** | Log food in plain English — AI parses macros automatically |
+| 4 | **Calorie Tracker** | Consumed vs remaining vs target for all 4 macros |
+| 5 | **Diet Planner** | AI-generated 7-day non-vegetarian high-protein meal plan |
+| 6 | **Workout Planner** | PPL / Upper-Lower / Full Body plans with sets, reps, rest |
+| 7 | **Workout Log** | Log sessions with dynamic exercise rows; volume tracking |
+| 8 | **Progressive Overload** | AI analysis of last 2 weeks — exact weight/rep progression |
+| 9 | **Weight Tracker** | Daily logging, 30-day chart, weekly averages, goal ETA |
+| 10 | **Grocery Planner** | Auto-generated from meal plan; mess items excluded |
+| 11 | **Weekly Check-In** | AI weekly review with calorie/protein target adjustments |
+| 12 | **Water Tracker** | Gauge + quick-add buttons; target = 35ml/kg bodyweight |
+| 13 | **Sleep Tracker** | Log sleep hours/quality; recovery insights |
+| 14 | **Supplement Tracker** | Whey, Creatine, Fish Oil, Multivitamin daily adherence |
+| 15 | **AI Coach Chat** | Full conversational coach with access to ALL your data |
+| 16 | **Mess Menu** | Upload hostel mess menu (text/PDF/image); AI-aware food logging |
 
 ---
 
-## Project Structure
+## 🏗️ Architecture
 
 ```
-gym_coach/
-├── main.py                  ← CLI entrypoint
-├── config.py                ← All constants (nutrients, prices, paths)
-├── state.py                 ← LangGraph state schema (TypedDicts)
+gym-coach/
 │
-├── agents/
-│   ├── profile_agent.py     ← User profile (LLM JSON parse + merge)
-│   ├── macro_agent.py       ← TDEE + macro math (no LLM)
-│   ├── diet_planner_agent.py← 7-day meal plan (LLM)
-│   ├── food_log_agent.py    ← Food logging (LLM parse + daily totals)
-│   ├── workout_planner_agent.py ← Workout programme (LLM)
-│   ├── workout_log_agent.py ← Workout log + progressive overload
-│   ├── weight_tracker_agent.py  ← Weight log + trend + prediction
-│   ├── grocery_planner_agent.py ← Grocery list from diet plan
-│   └── checkin_agent.py     ← Weekly check-in + adjustments (LLM)
+├── main.py                     # Entry point (Streamlit home + auth)
+├── requirements.txt
+├── .env.example
 │
-├── graphs/
-│   ├── router.py            ← Intent classifier (LLM + keyword fallback)
-│   └── gym_graph.py         ← StateGraph wiring all nodes
+├── app/
+│   ├── agents/                 # 7 Claude AI agents
+│   │   ├── base.py             # Shared BaseAgent + Claude client
+│   │   ├── food_parser.py      # Natural language → macros JSON
+│   │   ├── diet_planner.py     # 7-day meal plan generator
+│   │   ├── workout_planner.py  # Weekly training programme
+│   │   ├── progressive_overload.py  # Strength progression analysis
+│   │   ├── weekly_checkin.py   # Weekly review + adjustments
+│   │   ├── coach_chat.py       # Conversational coach (full context)
+│   │   └── mess_parser.py      # Menu text/PDF/image → structured JSON
+│   │
+│   ├── graph/                  # LangGraph stateful workflows
+│   │   ├── state.py            # TypedDict state definitions
+│   │   ├── food_log_graph.py   # check_mess → parse → validate → save
+│   │   ├── diet_plan_graph.py  # generate → validate → save → grocery
+│   │   ├── workout_plan_graph.py
+│   │   ├── progressive_overload_graph.py
+│   │   ├── checkin_graph.py    # collect_data → analyse → adjust → save
+│   │   └── coach_chat_graph.py # load_context → chat → save_message
+│   │
+│   ├── models/                 # SQLAlchemy ORM models (14 tables)
+│   │   ├── database.py         # Engine + SessionLocal + init_db()
+│   │   ├── user.py
+│   │   ├── food_log.py
+│   │   ├── workout_log.py + workout_set
+│   │   ├── weight_log.py
+│   │   ├── water_log.py
+│   │   ├── sleep_log.py
+│   │   ├── supplement_log.py
+│   │   ├── diet_plan.py
+│   │   ├── workout_plan.py
+│   │   ├── grocery_plan.py
+│   │   ├── chat_history.py
+│   │   ├── checkin.py
+│   │   └── mess_menu.py
+│   │
+│   ├── storage/                # Repository pattern CRUD layer (13 stores)
+│   ├── services/               # Business logic + chart builders
+│   │   ├── macro_calculator.py # BMR / TDEE / macro splits
+│   │   ├── auth_service.py     # Register / login / session
+│   │   ├── dashboard_service.py
+│   │   ├── food_service.py
+│   │   ├── workout_service.py
+│   │   ├── weight_service.py
+│   │   └── chart_service.py    # 8 Plotly charts
+│   │
+│   ├── ui/
+│   │   ├── style.py            # Global dark CSS
+│   │   └── pages/              # 16 Streamlit pages (auto-discovered)
+│   │
+│   └── utils/
+│       ├── helpers.py
+│       └── session.py
 │
-├── utils/
-│   ├── persistence.py       ← load/save JSON helpers
-│   ├── nutrition.py         ← BMR/TDEE/macro calculations
-│   ├── llm.py               ← Cached ChatOpenAI factory
-│   └── formatting.py        ← Rich tables / panels
+├── data/
+│   ├── nutrient_db.py          # 60+ foods (Indian + gym staples)
+│   └── exercise_db.py          # 30 exercises + PPL/UL/FB split definitions
 │
-└── data/                    ← Auto-created; all user data stored here
-    ├── user_profile.json
-    ├── food_log.json
-    ├── workout_log.json
-    ├── weight_log.json
-    ├── diet_plan.json
-    ├── workout_plan.json
-    ├── grocery_list.json
-    └── checkin_log.json
+├── database/                   # SQLite DB file (auto-created, gitignored)
+└── .streamlit/
+    └── config.toml             # Dark theme + server config
 ```
 
 ---
 
-## Quick Start
+## 🚀 Quick Start
 
-### 1. Install dependencies
+### 1. Prerequisites
+
+- Python 3.11+
+- An [Anthropic API key](https://console.anthropic.com/)
+
+### 2. Clone & Install
+
 ```bash
+git clone <your-repo-url>
+cd gym-coach
+
+# Create virtual environment
+python -m venv venv
+source venv/bin/activate      # Windows: venv\Scripts\activate
+
+# Install dependencies
 pip install -r requirements.txt
 ```
 
-### 2. Set your OpenAI API key
+### 3. Configure Environment
+
 ```bash
 cp .env.example .env
-# Edit .env and add your OPENAI_API_KEY
 ```
 
-### 3. Run interactive mode
-```bash
-python3 main.py
+Open `.env` and set your API key:
+
+```env
+ANTHROPIC_API_KEY=sk-ant-api03-your-key-here
 ```
 
-### 4. Run demo walkthrough (all features)
+### 4. Run the App
+
 ```bash
-python3 main.py --demo
+streamlit run main.py
 ```
 
-### 5. Single command mode
+Open your browser at **http://localhost:8501**
+
+---
+
+## 📱 First-Time Setup
+
+1. **Register** a new account on the login page
+2. Go to **Profile** → fill in your details → click **Save & Recalculate Macros**
+3. *(Optional)* Go to **Mess Menu** → upload your hostel mess menu
+4. Go to **Workout Planner** → click **Generate Workout Plan**
+5. Go to **Diet Planner** → click **Generate 7-Day Meal Plan**
+6. Start logging food on the **Food Log** page!
+
+---
+
+## 🤖 AI Agents
+
+All AI features use **Claude 3.5 Sonnet** via the Anthropic API.
+
+| Agent | LangGraph Nodes | What it does |
+|-------|----------------|--------------|
+| `FoodParserAgent` | check_mess → parse → validate → save | Converts "4 roti 2 eggs 200g chicken" into macros JSON |
+| `DietPlannerAgent` | generate → validate → save → grocery | Creates 7-day high-protein non-veg meal plan |
+| `WorkoutPlannerAgent` | generate → validate → save | Builds PPL/UL/FB programme with sets/reps/rest |
+| `ProgressiveOverloadAgent` | fetch_history → analyse → format | Recommends exact weights for next session |
+| `WeeklyCheckInAgent` | collect_data → analyse → adjust → save | Reviews your week and updates calorie targets |
+| `CoachChatAgent` | load_context → chat → save_message | Answers questions with full access to your data |
+| `MessParserAgent` | direct call | Parses mess menu from text/PDF/image |
+
+---
+
+## 🍽️ Mess Menu Integration
+
+The app has deep integration with hostel mess menus:
+
+1. **Upload** your menu (text / PDF / image with OCR)
+2. **Smart logging** — say "I ate lunch" and the AI lists today's mess items and asks for servings
+3. **Mess-aware diet plans** — AI uses mess foods first, adds extras only if targets aren't met
+4. **Mess-aware grocery lists** — only items NOT available in mess are listed
+
+---
+
+## 🧮 Macro Calculations
+
+Uses the **Mifflin-St Jeor** equation:
+
+| | Formula |
+|---|---|
+| **BMR (male)** | 10W + 6.25H − 5A + 5 |
+| **BMR (female)** | 10W + 6.25H − 5A − 161 |
+| **TDEE** | BMR × activity multiplier |
+| **Fat Loss Target** | TDEE − 500 kcal |
+| **Muscle Gain Target** | TDEE + 300 kcal |
+| **Protein (fat loss)** | 2.2g × kg bodyweight |
+| **Protein (muscle gain)** | 2.0g × kg bodyweight |
+| **Water Target** | 35ml × kg bodyweight |
+
+---
+
+## 🗄️ Database
+
+SQLite by default — stored at `database/gym_coach.db`.
+
+**14 tables:**
+`users` · `food_logs` · `workout_logs` · `workout_sets` · `weight_logs` · `water_logs` · `sleep_logs` · `supplement_logs` · `diet_plans` · `workout_plans` · `grocery_plans` · `chat_history` · `weekly_checkins` · `mess_menus`
+
+All data survives app restarts. The DB is created automatically on first run.
+
+---
+
+## 🔒 Security
+
+- Passwords hashed with **bcrypt** (never stored in plain text)
+- Session state managed via Streamlit's `st.session_state`
+- API key stored in `.env` (gitignored)
+- No data sent to third parties except Anthropic (for AI calls)
+
+---
+
+## 📦 Dependencies
+
+| Package | Purpose |
+|---------|---------|
+| `streamlit` | Multi-page web UI |
+| `anthropic` | Claude API client |
+| `langgraph` | Stateful AI workflow graphs |
+| `langchain-anthropic` | LangChain ↔ Claude integration |
+| `sqlalchemy` | ORM + database engine |
+| `pydantic` | Data validation |
+| `plotly` | Interactive charts |
+| `pandas` | Data manipulation |
+| `bcrypt` | Password hashing |
+| `python-dotenv` | Environment variable loading |
+| `pdfplumber` | PDF text extraction |
+| `Pillow` | Image handling |
+
+---
+
+## 🛠️ Development
+
 ```bash
-python3 main.py --message "Calculate my macros"
+# Run with auto-reload
+streamlit run main.py
+
+# Check code style
+ruff check app/
+
+# Run type checking
+pyright app/
 ```
 
 ---
 
-## Example Conversations
+## 🗺️ Roadmap
 
-```
-You: My name is Arjun. I'm 22, male, 82kg, 175cm, fat loss goal,
-     moderate activity, vegetarian, budget ₹4000, beginner, target 75kg
-
-Coach: ✅ Profile saved!
-  Name                : Arjun
-  Age                 : 22
-  Weight              : 82.0 kg
-  Target Weight       : 75.0 kg
-  Goal                : fat_loss
-  ...
-
-You: Calculate my macros
-
-Coach: 🔢 Calorie & Macro Targets — Goal: Fat Loss (-500 kcal deficit)
-  Maintenance (TDEE) : 2489 kcal
-  Daily Target       : 1989 kcal
-  Protein            : 148 g
-  Carbohydrates      : 198 g
-  Fat                : 55 g
-
-You: For lunch I ate 4 roti, 1 bowl dal, 200g paneer
-
-Coach: ✅ Logged: Lunch
-    • 4 roti (140g)
-    • 1 bowl dal (150g)
-    • 200g paneer
-
-  This meal  →  1092 kcal | P: 62g  C: 105g  F: 52g
-  Today so far → 1092 kcal
-  Remaining    → 897 kcal | Protein: 86g
-
-You: Log workout: Bench Press 60kg 10 10 8 7, Shoulder Press 40kg 12 12 10
-
-Coach: ✅ Workout Logged — 2024-06-22
-  • Bench Press            60 kg × [10, 10, 8, 7]
-  • Shoulder Press         40 kg × [12, 12, 10]
-
-  📈 Progressive Overload Report
-  🏋️ Bench Press
-     This week: 60 kg × [10, 10, 8, 7]
-     💡 First recorded session — keep notes and aim to beat this next week!
-
-You: Weight today: 81.5 kg
-
-Coach: ⚖️  Weight logged: 81.5 kg (2024-06-22)
-  🎯 Target: 75 kg | Remaining: 6.5 kg
-  At current pace: ~13 weeks to reach 75 kg.
-```
+- [ ] PostgreSQL support for production deployments
+- [ ] Barcode scanner for food logging
+- [ ] Wearable device integration (step count, heart rate)
+- [ ] Multiple user support / social features
+- [ ] Export data as PDF progress report
+- [ ] Mobile-optimised layout
+- [ ] Notification reminders (water, supplements, workout)
 
 ---
 
-## LangGraph Flow
+## 📄 License
 
-```
-START
-  └─► router_node  (classifies intent via LLM + keyword fallback)
-        ├─► profile_node       ─► END
-        ├─► macro_node         ─► END
-        ├─► diet_plan_node     ─► END
-        ├─► food_log_node      ─► END
-        ├─► workout_plan_node  ─► END
-        ├─► workout_log_node   ─► END
-        ├─► weight_log_node    ─► END
-        ├─► grocery_node       ─► END
-        ├─► checkin_node       ─► END
-        └─► unknown_node       ─► END
-```
+MIT License — see [LICENSE](LICENSE) for details.
 
 ---
 
-## Adding More Features Later
-
-To add a new feature (e.g. Water Tracker):
-1. Create `agents/water_tracker_agent.py` with a node function
-2. Add the node + edge in `graphs/gym_graph.py`
-3. Add the intent + keywords in `graphs/router.py`
-4. Add state fields to `state.py`
-
-That's it — the graph handles the rest.
+*Built with ❤️ using Python, Streamlit, LangGraph, and Claude AI*

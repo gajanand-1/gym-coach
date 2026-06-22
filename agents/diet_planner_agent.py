@@ -1,14 +1,9 @@
 """
 Weekly Diet Planner Agent Node
 -------------------------------
-Uses the LLM to generate a personalised 7-day Indian meal plan based on:
-  - Macro targets
-  - Diet type (veg / non-veg / vegan)
-  - Monthly budget
-  - Allergies
-
-Returns a structured list[DayPlan] and a formatted text response.
-Persists the plan to DIET_PLAN_FILE.
+Generates a personalised 7-day Indian meal plan.
+Supports ALL diet types: vegetarian, non_vegetarian, vegan, eggetarian.
+Non-veg plans include chicken, eggs, fish, mutton, prawns.
 """
 
 from __future__ import annotations
@@ -27,11 +22,20 @@ You are an expert Indian sports nutritionist.
 
 Generate a 7-day weekly meal plan (Mon–Sun) that:
 1. Hits the given calorie and macro targets every day.
-2. Uses only foods available in India within the given monthly budget.
-3. Respects the diet type (vegetarian / non_vegetarian / vegan / eggetarian).
-4. Avoids all listed allergies.
-5. Includes Breakfast, Lunch, Dinner (and an optional Snack).
-6. Shows the estimated daily food cost in ₹.
+2. Uses only foods available in India within the given daily budget.
+3. Strictly respects the diet type:
+   - vegetarian   → no meat/fish/eggs
+   - non_vegetarian → include chicken, eggs, fish, mutton, prawns freely
+   - eggetarian   → eggs allowed, no meat/fish
+   - vegan        → no animal products at all
+4. For NON-VEGETARIAN plans, prioritise high-protein non-veg sources:
+   - Breakfast: boiled eggs or egg omelette
+   - Lunch: chicken breast / rohu fish / tuna
+   - Dinner: chicken thigh / mutton / prawns
+   - Snacks: boiled eggs, tuna, chicken tikka
+5. Avoids all listed allergies.
+6. Includes Breakfast, Lunch, Dinner and 1-2 Snacks.
+7. Shows estimated daily food cost in ₹.
 
 Return ONLY a valid JSON array — no prose, no markdown fences.
 
@@ -41,15 +45,15 @@ Schema for each day:
   "meals": [
     {
       "name": "Breakfast",
-      "items": ["Oats 80g", "Milk 200ml", "Banana 1"],
-      "kcal": 420,
-      "protein_g": 18,
-      "carbs_g": 68,
-      "fat_g": 8
+      "items": ["4 Boiled Eggs", "2 Roti (70g)", "1 Banana (100g)"],
+      "kcal": 480,
+      "protein_g": 30,
+      "carbs_g": 42,
+      "fat_g": 18
     }
   ],
   "total_kcal": 2000,
-  "daily_cost": 120
+  "daily_cost": 140
 }
 """.strip()
 
@@ -80,21 +84,30 @@ def diet_planner_node(state: GymCoachState) -> dict:
             )
         }
 
-    daily_budget = round(
-        float(profile.get("monthly_budget_inr", 4000)) / 30, 0
-    )
+    diet_type    = profile.get("diet_type", "non_vegetarian")
+    daily_budget = round(float(profile.get("monthly_budget_inr", 4000)) / 30, 0)
+    allergies    = profile.get("allergies", [])
 
     prompt = (
-        f"Diet type       : {profile.get('diet_type', 'vegetarian')}\n"
+        f"Diet type       : {diet_type}\n"
         f"Goal            : {profile.get('goal', 'fat_loss')}\n"
         f"Daily calories  : {macros['target_kcal']:.0f} kcal\n"
         f"Protein target  : {macros['protein_g']:.0f} g\n"
         f"Carbs target    : {macros['carbs_g']:.0f} g\n"
         f"Fat target      : {macros['fat_g']:.0f} g\n"
         f"Daily budget    : ₹{daily_budget:.0f}\n"
-        f"Allergies       : {', '.join(profile.get('allergies', [])) or 'None'}\n"
+        f"Allergies       : {', '.join(allergies) if allergies else 'None'}\n"
         f"Today's date    : {date.today().isoformat()}\n"
     )
+
+    if diet_type == "non_vegetarian":
+        prompt += (
+            "\nIMPORTANT: This is a NON-VEGETARIAN plan. "
+            "Use chicken breast, boiled eggs, rohu fish, tuna, mutton, prawns "
+            "as primary protein sources in every meal. "
+            "Aim for 30-40g protein per meal. "
+            "Include egg omelette or boiled eggs at breakfast every day.\n"
+        )
 
     messages = [
         SystemMessage(content=SYSTEM_PROMPT),
@@ -120,7 +133,9 @@ def diet_planner_node(state: GymCoachState) -> dict:
     save_json(DIET_PLAN_FILE, plan)
 
     # ── format for display ────────────────────────────────────────────────────
-    lines = ["🥗  7-Day Meal Plan\n" + "═" * 50]
+    diet_emoji = "🍗" if diet_type == "non_vegetarian" else "🥗"
+    lines = [f"{diet_emoji}  7-Day {diet_type.replace('_', ' ').title()} Meal Plan\n" + "═" * 55]
+
     for day_plan in plan:
         lines.append(f"\n📅  {day_plan['day']}")
         for meal in day_plan.get("meals", []):
@@ -137,7 +152,7 @@ def diet_planner_node(state: GymCoachState) -> dict:
             f"  💰 Daily cost: ₹{day_plan.get('daily_cost', 0):.0f}  |  "
             f"Total: {day_plan.get('total_kcal', 0):.0f} kcal"
         )
-        lines.append("─" * 50)
+        lines.append("─" * 55)
 
     return {
         "weekly_diet_plan": plan,

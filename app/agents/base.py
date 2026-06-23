@@ -1,25 +1,25 @@
-"""Shared base class and Claude client factory for all agents."""
+"""Shared base class and OpenAI client factory for all agents."""
 
 import os
 import json
 import re
 from typing import Any
-import anthropic
+from openai import OpenAI
 from dotenv import load_dotenv
 
 load_dotenv()
 
-MODEL = "claude-3-5-sonnet-20241022"
+MODEL = "gpt-4o"
 MAX_TOKENS = 4096
 
 
-def get_client() -> anthropic.Anthropic:
-    api_key = os.getenv("ANTHROPIC_API_KEY", "")
+def get_client() -> OpenAI:
+    api_key = os.getenv("OPENAI_API_KEY", "")
     if not api_key:
         raise EnvironmentError(
-            "ANTHROPIC_API_KEY is not set. Add it to your .env file."
+            "OPENAI_API_KEY is not set. Add it to your .env file."
         )
-    return anthropic.Anthropic(api_key=api_key)
+    return OpenAI(api_key=api_key)
 
 
 def extract_json(text: str) -> Any:
@@ -49,20 +49,22 @@ def extract_json(text: str) -> Any:
 
 
 class BaseAgent:
-    """Thin wrapper around the Claude API with prompt/response helpers."""
+    """Thin wrapper around the OpenAI API with prompt/response helpers."""
 
     def __init__(self):
         self.client = get_client()
         self.model = MODEL
 
     def _call(self, system: str, user: str, max_tokens: int = MAX_TOKENS) -> str:
-        response = self.client.messages.create(
+        response = self.client.chat.completions.create(
             model=self.model,
             max_tokens=max_tokens,
-            system=system,
-            messages=[{"role": "user", "content": user}],
+            messages=[
+                {"role": "system", "content": system},
+                {"role": "user",   "content": user},
+            ],
         )
-        return response.content[0].text
+        return response.choices[0].message.content
 
     def _call_with_history(
         self,
@@ -70,10 +72,10 @@ class BaseAgent:
         messages: list[dict],
         max_tokens: int = MAX_TOKENS,
     ) -> str:
-        response = self.client.messages.create(
+        full_messages = [{"role": "system", "content": system}] + messages
+        response = self.client.chat.completions.create(
             model=self.model,
             max_tokens=max_tokens,
-            system=system,
-            messages=messages,
+            messages=full_messages,
         )
-        return response.content[0].text
+        return response.choices[0].message.content

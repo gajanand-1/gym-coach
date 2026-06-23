@@ -136,9 +136,10 @@ for col, (icon, title, desc) in zip(feat_cols, features):
 st.markdown("<br>", unsafe_allow_html=True)
 
 # ── API key warning ───────────────────────────────────────────────────────
-if not os.getenv("ANTHROPIC_API_KEY"):
+if not os.getenv("OPENAI_API_KEY"):
     st.warning(
-        "⚠️ **ANTHROPIC_API_KEY not set** — AI features won't work until you add it to `.env`",
+        "⚠️ **OPENAI_API_KEY not set** — AI features won't work until you add it to `.env`\n\n"
+        "Get your key at: https://platform.openai.com/api-keys",
         icon="🔑",
     )
 

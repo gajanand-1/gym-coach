@@ -1,10 +1,9 @@
 # Core framework
 streamlit>=1.35.0
 
-# AI / LangChain
-anthropic>=0.28.0
+# AI
+openai>=1.35.0
 langgraph>=0.2.0
-langchain-anthropic>=0.1.23
 langchain-core>=0.2.10
 
 # Database

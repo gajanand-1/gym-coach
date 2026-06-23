@@ -22,11 +22,12 @@ def init_database():
 def verify_env():
     """Warn if critical env vars are missing."""
     import streamlit as st
-    api_key = os.getenv("ANTHROPIC_API_KEY", "")
+    api_key = os.getenv("OPENAI_API_KEY", "")
     if not api_key:
         st.error(
-            "⚠️ **ANTHROPIC_API_KEY is not set.**\n\n"
-            "Add it to your `.env` file:\n```\nANTHROPIC_API_KEY=sk-ant-...\n```\n\n"
+            "⚠️ **OPENAI_API_KEY is not set.**\n\n"
+            "Add it to your `.env` file:\n```\nOPENAI_API_KEY=sk-proj-...\n```\n\n"
+            "Get your key at: https://platform.openai.com/api-keys\n\n"
             "AI features (food parsing, diet plans, workout plans, coach chat) "
             "will not work until this is set.",
             icon="🔑",

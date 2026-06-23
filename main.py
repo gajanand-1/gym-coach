@@ -21,6 +21,14 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
+# ── Page config MUST be the very first Streamlit command ─────────────────
+st.set_page_config(
+    page_title="AI Gym Coach",
+    page_icon="🏋️",
+    layout="wide",
+    initial_sidebar_state="expanded",
+)
+
 # ── DB + path initialisation (runs once on startup) ─────────────────────
 from app.startup import run_startup
 run_startup()
@@ -33,39 +41,55 @@ init_session_defaults()
 from app.ui.style import inject_css, section_header
 inject_css()
 
-# ── Page config ──────────────────────────────────────────────────────────
-st.set_page_config(
-    page_title="AI Gym Coach",
-    page_icon="🏋️",
-    layout="wide",
-    initial_sidebar_state="expanded",
-)
-
-# ── If already logged in → redirect hint ────────────────────────────────
+# ── If already logged in → clickable navigation home ────────────────────
 if st.session_state.get("logged_in"):
     user_name = st.session_state.get("username", "Athlete")
-    st.success(f"✅ Logged in as **{user_name}** — use the sidebar to navigate.")
-    st.markdown("### 👈 Select a page from the sidebar to get started")
-    st.markdown("""
-    | Page | What you can do |
-    |---|---|
-    | 🏠 Dashboard | Full daily snapshot — calories, macros, water, sleep, workout |
-    | 👤 Profile | Update your details and recalculate macros |
-    | 🍽️ Food Log | Log food naturally with AI parsing |
-    | 🔥 Calorie Tracker | Live consumed vs remaining vs target |
-    | 🥗 Diet Planner | Generate AI 7-day meal plan |
-    | 💪 Workout Planner | Generate AI weekly training programme |
-    | 📋 Workout Log | Log completed sessions |
-    | 📈 Progressive Overload | AI analysis of strength progression |
-    | ⚖️ Weight Tracker | Log and chart body weight |
-    | 🛒 Grocery Planner | Auto grocery list from meal plan |
-    | 📊 Weekly Check-In | AI weekly review and macro adjustment |
-    | 💧 Water Tracker | Track daily hydration |
-    | 😴 Sleep Tracker | Log and analyse sleep |
-    | 💊 Supplement Tracker | Daily supplement adherence |
-    | 🤖 AI Coach Chat | Conversational AI coach with full context |
-    | 🏫 Mess Menu | Upload hostel mess menu |
-    """)
+
+    st.markdown(f"""
+    <div style="background:linear-gradient(135deg,#1E2130,#161B27);
+                border-radius:14px;padding:20px 24px;
+                border:1px solid #2A2F45;margin-bottom:24px">
+        <span style="font-size:1.5rem">👋</span>
+        <span style="color:#FAFAFA;font-size:1.2rem;font-weight:700;margin-left:8px">
+            Welcome back, {user_name}!
+        </span><br>
+        <span style="color:#8892A4;font-size:0.9rem">
+            Click any page below to jump straight in.
+        </span>
+    </div>
+    """, unsafe_allow_html=True)
+
+    # ── Page navigation cards (2 columns) ────────────────────────────────
+    PAGES = [
+        ("app/ui/pages/01_Dashboard.py",          "🏠", "Dashboard",          "Daily snapshot — calories, macros, water, sleep, workout"),
+        ("app/ui/pages/02_Profile.py",             "👤", "Profile",            "Update details & auto-recalculate macros"),
+        ("app/ui/pages/03_Food_Log.py",            "🍽️", "Food Log",           "Log food in plain English with AI parsing"),
+        ("app/ui/pages/04_Calorie_Tracker.py",     "🔥", "Calorie Tracker",    "Live consumed vs remaining vs target"),
+        ("app/ui/pages/05_Diet_Planner.py",        "🥗", "Diet Planner",       "AI-generated 7-day non-veg meal plan"),
+        ("app/ui/pages/06_Workout_Planner.py",     "💪", "Workout Planner",    "AI weekly training programme"),
+        ("app/ui/pages/07_Workout_Log.py",         "📋", "Workout Log",        "Log completed sessions & track volume"),
+        ("app/ui/pages/08_Progressive_Overload.py","📈", "Progressive Overload","AI strength progression analysis"),
+        ("app/ui/pages/09_Weight_Tracker.py",      "⚖️", "Weight Tracker",     "Log & chart body weight trends"),
+        ("app/ui/pages/10_Grocery_Planner.py",     "🛒", "Grocery Planner",    "Auto grocery list from your meal plan"),
+        ("app/ui/pages/11_Weekly_Checkin.py",      "📊", "Weekly Check-In",    "AI weekly review & macro adjustment"),
+        ("app/ui/pages/12_Water_Tracker.py",       "💧", "Water Tracker",      "Track daily hydration with gauge"),
+        ("app/ui/pages/13_Sleep_Tracker.py",       "😴", "Sleep Tracker",      "Log sleep & get recovery insights"),
+        ("app/ui/pages/14_Supplement_Tracker.py",  "💊", "Supplement Tracker", "Daily supplement adherence"),
+        ("app/ui/pages/15_AI_Coach_Chat.py",       "🤖", "AI Coach Chat",      "Conversational coach with full data context"),
+        ("app/ui/pages/16_Mess_Menu.py",           "🏫", "Mess Menu",          "Upload & manage hostel mess menu"),
+    ]
+
+    col_a, col_b = st.columns(2)
+    for i, (page_path, icon, title, desc) in enumerate(PAGES):
+        col = col_a if i % 2 == 0 else col_b
+        with col:
+            st.page_link(
+                page_path,
+                label=f"{icon} **{title}**  \n{desc}",
+                use_container_width=True,
+            )
+
+    st.divider()
     if st.button("🚪 Logout", type="secondary"):
         from app.services.auth_service import AuthService
         AuthService.clear_session()

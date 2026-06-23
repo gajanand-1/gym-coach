@@ -61,22 +61,23 @@ if st.session_state.get("logged_in"):
 
     # ── Page navigation cards (2 columns) ────────────────────────────────
     PAGES = [
+        ("app/ui/pages/00_Coach.py",               "🤖", "AI Coach (Unified)",  "⭐ Type anything — routes ALL commands through LangGraph"),
         ("app/ui/pages/01_Dashboard.py",          "🏠", "Dashboard",          "Daily snapshot — calories, macros, water, sleep, workout"),
         ("app/ui/pages/02_Profile.py",             "👤", "Profile",            "Update details & auto-recalculate macros"),
-        ("app/ui/pages/03_Food_Log.py",            "🍽️", "Food Log",           "Log food in plain English with AI parsing"),
+        ("app/ui/pages/03_Food_Log.py",            "🍽️", "Food Log",           "Log food — LangGraph food_log_node"),
         ("app/ui/pages/04_Calorie_Tracker.py",     "🔥", "Calorie Tracker",    "Live consumed vs remaining vs target"),
-        ("app/ui/pages/05_Diet_Planner.py",        "🥗", "Diet Planner",       "AI-generated 7-day non-veg meal plan"),
-        ("app/ui/pages/06_Workout_Planner.py",     "💪", "Workout Planner",    "AI weekly training programme"),
-        ("app/ui/pages/07_Workout_Log.py",         "📋", "Workout Log",        "Log completed sessions & track volume"),
-        ("app/ui/pages/08_Progressive_Overload.py","📈", "Progressive Overload","AI strength progression analysis"),
-        ("app/ui/pages/09_Weight_Tracker.py",      "⚖️", "Weight Tracker",     "Log & chart body weight trends"),
-        ("app/ui/pages/10_Grocery_Planner.py",     "🛒", "Grocery Planner",    "Auto grocery list from your meal plan"),
-        ("app/ui/pages/11_Weekly_Checkin.py",      "📊", "Weekly Check-In",    "AI weekly review & macro adjustment"),
-        ("app/ui/pages/12_Water_Tracker.py",       "💧", "Water Tracker",      "Track daily hydration with gauge"),
-        ("app/ui/pages/13_Sleep_Tracker.py",       "😴", "Sleep Tracker",      "Log sleep & get recovery insights"),
-        ("app/ui/pages/14_Supplement_Tracker.py",  "💊", "Supplement Tracker", "Daily supplement adherence"),
-        ("app/ui/pages/15_AI_Coach_Chat.py",       "🤖", "AI Coach Chat",      "Conversational coach with full data context"),
-        ("app/ui/pages/16_Mess_Menu.py",           "🏫", "Mess Menu",          "Upload & manage hostel mess menu"),
+        ("app/ui/pages/05_Diet_Planner.py",        "🥗", "Diet Planner",       "LangGraph diet_plan_node → 7-day meal plan"),
+        ("app/ui/pages/06_Workout_Planner.py",     "💪", "Workout Planner",    "LangGraph workout_plan_node → weekly programme"),
+        ("app/ui/pages/07_Workout_Log.py",         "📋", "Workout Log",        "LangGraph workout_log_node → volume tracking"),
+        ("app/ui/pages/08_Progressive_Overload.py","📈", "Progressive Overload","LangGraph overload_node → strength analysis"),
+        ("app/ui/pages/09_Weight_Tracker.py",      "⚖️", "Weight Tracker",     "LangGraph weight_log_node → trend charts"),
+        ("app/ui/pages/10_Grocery_Planner.py",     "🛒", "Grocery Planner",    "LangGraph grocery_node → auto grocery list"),
+        ("app/ui/pages/11_Weekly_Checkin.py",      "📊", "Weekly Check-In",    "LangGraph checkin_node → AI weekly review"),
+        ("app/ui/pages/12_Water_Tracker.py",       "💧", "Water Tracker",      "LangGraph water_log_node → hydration gauge"),
+        ("app/ui/pages/13_Sleep_Tracker.py",       "😴", "Sleep Tracker",      "LangGraph sleep_log_node → recovery insights"),
+        ("app/ui/pages/14_Supplement_Tracker.py",  "💊", "Supplement Tracker", "LangGraph supplement_node → daily adherence"),
+        ("app/ui/pages/15_AI_Coach_Chat.py",       "💬", "AI Coach Chat",      "Classic chat with full context"),
+        ("app/ui/pages/16_Mess_Menu.py",           "🏫", "Mess Menu",          "LangGraph mess_menu_node → menu parsing"),
     ]
 
     col_a, col_b = st.columns(2)
@@ -136,10 +137,9 @@ for col, (icon, title, desc) in zip(feat_cols, features):
 st.markdown("<br>", unsafe_allow_html=True)
 
 # ── API key warning ───────────────────────────────────────────────────────
-if not os.getenv("OPENAI_API_KEY"):
+if not os.getenv("ANTHROPIC_API_KEY"):
     st.warning(
-        "⚠️ **OPENAI_API_KEY not set** — AI features won't work until you add it to `.env`\n\n"
-        "Get your key at: https://platform.openai.com/api-keys",
+        "⚠️ **ANTHROPIC_API_KEY not set** — AI features won't work until you add it to `.env`",
         icon="🔑",
     )
 
